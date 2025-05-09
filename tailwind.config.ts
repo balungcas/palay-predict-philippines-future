@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,20 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				// Custom rice/agriculture theme colors
+				rice: {
+					50: '#f8fbf0',
+					100: '#f1f8e1',
+					200: '#e2f0c4',
+					300: '#cce49a',
+					400: '#b0d568',
+					500: '#92c03e',
+					600: '#729a2e',
+					700: '#567327',
+					800: '#445c24',
+					900: '#394e21',
+					950: '#1a2a0c',
 				}
 			},
 			borderRadius: {
@@ -84,11 +99,31 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'fade-in': {
+					from: {
+						opacity: '0'
+					},
+					to: {
+						opacity: '1'
+					}
+				},
+				'grow-up': {
+					from: {
+						transform: 'scaleY(0)',
+						transformOrigin: 'bottom'
+					},
+					to: {
+						transform: 'scaleY(1)',
+						transformOrigin: 'bottom'
+					}
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'fade-in': 'fade-in 0.5s ease-out',
+				'grow-up': 'grow-up 0.8s ease-out'
 			}
 		}
 	},
