@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { LineWaveform } from 'lucide-react';
+import { LineChart } from 'lucide-react';
 
 interface ForecastSettingsProps {
   onGenerateForecast: (years: number, method: 'linear' | 'exponential') => void;
@@ -28,7 +28,7 @@ const ForecastSettings = ({ onGenerateForecast, isGenerating }: ForecastSettings
     <Card className="border-rice-200">
       <CardHeader className="bg-rice-50">
         <CardTitle className="text-rice-800 flex items-center">
-          <LineWaveform className="mr-2 h-5 w-5" />
+          <LineChart className="mr-2 h-5 w-5" />
           Forecast Settings
         </CardTitle>
       </CardHeader>

@@ -2,7 +2,7 @@
 import { useState, ChangeEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileUpload, UploadCloud, AlertCircle, Check } from 'lucide-react';
+import { FileUp, UploadCloud, AlertCircle, Check } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { parseCSV } from '@/utils/dataUtils';
 import { RiceProductionData } from '@/types/RiceData';
@@ -82,7 +82,7 @@ const CSVUploader = ({ onDataLoad, onUseDefaultData }: CSVUploaderProps) => {
 
             {fileName && !error && (
               <div className="text-sm text-rice-600 flex items-center gap-2">
-                <FileUpload className="w-4 h-4" />
+                <FileUp className="w-4 h-4" />
                 <span>{fileName}</span>
                 {success && <Check className="w-4 h-4 text-green-500" />}
               </div>
