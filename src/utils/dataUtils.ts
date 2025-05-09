@@ -429,7 +429,7 @@ export const neuralNetworkForecast = async (
   model.compile({
     optimizer: tf.train.adam(0.001),
     loss: 'meanSquaredError',
-    metrics: ['meanAbsoluteError']
+    metrics: ['mae'] // Fixed: Changed from 'meanAbsoluteError' to 'mae'
   });
 
   // Train the model
