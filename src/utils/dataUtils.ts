@@ -93,29 +93,42 @@ export const parseCSV = (csvContent: string): RiceProductionData[] => {
 const parseFAOFormat = (lines: string[], headers: string[]): RiceProductionData[] => {
   console.log("Processing FAO format CSV");
   
-  // Find relevant column indices
-  const yearIndex = headers.indexOf('year');
-  const yearCodeIndex = headers.indexOf('year code');
-  const elementCodeIndex = headers.indexOf('element code');
-  const elementIndex = headers.indexOf('element');
-  const valueIndex = headers.indexOf('value');
-  const itemIndex = headers.indexOf('item');
-  const itemCodeIndex = headers.indexOf('item code (cpc)');
+  // Normalize headers to handle case sensitivity and spaces
+  const normalizedHeaders = headers.map(h => h.toLowerCase().trim());
   
-  if (yearIndex === -1 && yearCodeIndex === -1) {
-    throw new Error("Cannot find year information in the CSV. Expected 'Year' or 'Year Code' column.");
-  }
+  // Find relevant column indices - being more flexible with matching
+  const yearIndex = normalizedHeaders.findIndex(h => 
+    h === 'year' || h === 'year code');
   
-  if (elementCodeIndex === -1 && elementIndex === -1) {
-    throw new Error("Cannot find element information in the CSV. Expected 'Element' or 'Element Code' column.");
-  }
+  const elementCodeIndex = normalizedHeaders.findIndex(h => 
+    h === 'element code');
   
-  if (valueIndex === -1) {
-    throw new Error("Cannot find 'Value' column in the CSV.");
+  const elementIndex = normalizedHeaders.findIndex(h => 
+    h === 'element');
+  
+  const valueIndex = normalizedHeaders.findIndex(h => 
+    h === 'value');
+  
+  const itemIndex = normalizedHeaders.findIndex(h => 
+    h === 'item');
+    
+  const itemCodeIndex = normalizedHeaders.findIndex(h => 
+    h === 'item code (cpc)');
+  
+  // Check for required columns
+  const missingColumns = [];
+  if (yearIndex === -1) missingColumns.push("Year or Year Code");
+  if (elementCodeIndex === -1 && elementIndex === -1) missingColumns.push("Element or Element Code");
+  if (valueIndex === -1) missingColumns.push("Value");
+  
+  if (missingColumns.length > 0) {
+    throw new Error(
+      `CSV must contain columns for ${missingColumns.join(', ')}. Found columns: ${headers.join(', ')}`
+    );
   }
   
   // Output found column indices for debugging
-  console.log(`Found columns - Year: ${yearIndex !== -1 ? yearIndex : yearCodeIndex}, Element: ${elementIndex !== -1 ? elementIndex : elementCodeIndex}, Value: ${valueIndex}`);
+  console.log(`Found columns - Year: ${yearIndex !== -1 ? yearIndex : 'not found'}, Element Code: ${elementCodeIndex}, Element: ${elementIndex}, Value: ${valueIndex}`);
   
   // We'll use these to store data by year
   const yearData: Map<number, {
@@ -133,11 +146,11 @@ const parseFAOFormat = (lines: string[], headers: string[]): RiceProductionData[
     processedLines++;
     
     // Skip if we don't have enough values for all expected columns
-    if (values.length < Math.max(yearIndex, yearCodeIndex, elementIndex, elementCodeIndex, valueIndex) + 1) {
+    if (values.length <= Math.max(yearIndex, elementCodeIndex, elementIndex, valueIndex)) {
       continue;
     }
     
-    // Get item type (to ensure we're only processing rice data)
+    // Get item type (to ensure we're only processing rice data if specified)
     let itemValue = '';
     if (itemIndex !== -1) {
       itemValue = values[itemIndex].toLowerCase();
@@ -145,20 +158,26 @@ const parseFAOFormat = (lines: string[], headers: string[]): RiceProductionData[
       itemValue = values[itemCodeIndex].toLowerCase();
     }
     
-    // Only process rice-related items (optional check)
-    if (itemValue !== '' && !itemValue.includes('rice') && !itemValue.includes('0422') && !itemValue.includes('23')) {
+    // Optional: Only process rice-related items
+    // Uncomment if you want to filter by rice items only
+    /*
+    if (itemValue !== '' && !itemValue.includes('rice') && !itemValue.includes('0422')) {
       continue;
     }
+    */
     
     // Get year
-    const yearVal = yearIndex !== -1 ? values[yearIndex] : values[yearCodeIndex];
+    const yearVal = values[yearIndex];
     const year = parseInt(yearVal);
     if (isNaN(year)) continue;
     
     // Get element (to identify if this is area, yield, or production)
-    const elementVal = (elementIndex !== -1) ? 
-      values[elementIndex].toLowerCase() : 
-      values[elementCodeIndex].toLowerCase();
+    let elementVal = '';
+    if (elementIndex !== -1) {
+      elementVal = values[elementIndex].toLowerCase();
+    } else if (elementCodeIndex !== -1) {
+      elementVal = values[elementCodeIndex].toLowerCase();
+    }
     
     // Get the value
     const value = parseFloat(values[valueIndex]);
@@ -172,15 +191,24 @@ const parseFAOFormat = (lines: string[], headers: string[]): RiceProductionData[
     // Update the appropriate metric based on element type
     const currentData = yearData.get(year)!;
     
-    if (elementVal.includes('area harvested') || elementVal.includes('area') || elementVal.includes('5312') || elementVal === '5312') {
+    // Match by more comprehensive element descriptions or codes
+    if (elementVal.includes('area harvested') || 
+        elementVal.includes('harvested area') || 
+        elementVal === '5312' || 
+        elementVal.includes('5312')) {
       currentData.area = value;
       validDataPoints++;
     } 
-    else if (elementVal.includes('yield') || elementVal.includes('5419') || elementVal === '5419') {
+    else if (elementVal.includes('yield') || 
+             elementVal === '5419' || 
+             elementVal.includes('5419') || 
+             elementVal.includes('hg/ha')) {
       currentData.yield = value;
       validDataPoints++;
     }
-    else if (elementVal.includes('production') || elementVal.includes('5510') || elementVal === '5510') {
+    else if (elementVal.includes('production') || 
+             elementVal === '5510' || 
+             elementVal.includes('5510')) {
       currentData.production = value;
       validDataPoints++;
     }
@@ -211,7 +239,7 @@ const parseFAOFormat = (lines: string[], headers: string[]): RiceProductionData[
   
   if (result.length === 0) {
     throw new Error(
-      "Could not extract complete rice production data. Please ensure your CSV contains area harvested, yield, and production values for each year."
+      "Could not extract complete rice production data. Please ensure your CSV contains area harvested, yield, and production values for each year. For FAO format, look for Element codes 5312 (Area Harvested), 5419 (Yield), and 5510 (Production)."
     );
   }
   

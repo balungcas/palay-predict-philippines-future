@@ -2,7 +2,7 @@
 import { useState, ChangeEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileUp, UploadCloud, AlertCircle, Check, FileQuestion } from 'lucide-react';
+import { FileUp, UploadCloud, AlertCircle, Check, FileQuestion, Download } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { parseCSV } from '@/utils/dataUtils';
 import { RiceProductionData } from '@/types/RiceData';
@@ -53,6 +53,38 @@ const CSVUploader = ({ onDataLoad, onUseDefaultData }: CSVUploaderProps) => {
     }
   };
 
+  const generateSampleCSV = () => {
+    const headers = "Domain Code,Domain,Area Code (M49),Area,Element Code,Element,Item Code (CPC),Item,Year Code,Year,Unit,Value,Flag,Flag Description,Note";
+    
+    // Generate sample data rows - 3 years, with 3 element types each
+    const rows = [
+      // Area harvested data (Element Code 5312)
+      "QC,Crops and livestock products,608,Philippines,5312,Area harvested,0422,Rice (paddy),2020,2020,ha,4718337,,," ,
+      "QC,Crops and livestock products,608,Philippines,5312,Area harvested,0422,Rice (paddy),2021,2021,ha,4802721,,," ,
+      "QC,Crops and livestock products,608,Philippines,5312,Area harvested,0422,Rice (paddy),2022,2022,ha,4827312,,," ,
+      
+      // Yield data (Element Code 5419)
+      "QC,Crops and livestock products,608,Philippines,5419,Yield,0422,Rice (paddy),2020,2020,hg/ha,40840,,," ,
+      "QC,Crops and livestock products,608,Philippines,5419,Yield,0422,Rice (paddy),2021,2021,hg/ha,41340,,," ,
+      "QC,Crops and livestock products,608,Philippines,5419,Yield,0422,Rice (paddy),2022,2022,hg/ha,41980,,," ,
+      
+      // Production data (Element Code 5510)
+      "QC,Crops and livestock products,608,Philippines,5510,Production,0422,Rice (paddy),2020,2020,tonnes,19294719,,," ,
+      "QC,Crops and livestock products,608,Philippines,5510,Production,0422,Rice (paddy),2021,2021,tonnes,19962991,,," ,
+      "QC,Crops and livestock products,608,Philippines,5510,Production,0422,Rice (paddy),2022,2022,tonnes,20265421,,,"
+    ];
+    
+    const csvContent = [headers, ...rows].join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'fao_format_sample.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="mb-8">
       <h2 className="text-2xl font-semibold mb-4 text-rice-800">Upload Your Data</h2>
@@ -97,13 +129,21 @@ const CSVUploader = ({ onDataLoad, onUseDefaultData }: CSVUploaderProps) => {
                   {error}
                   {error.includes('Could not extract complete rice production data') && (
                     <div className="mt-2 text-sm">
-                      For FAO format, ensure your CSV has columns for:<br />
-                      - Domain Code, Domain<br />
-                      - Area Code (M49), Area<br />
-                      - Element Code, Element (must include area harvested, yield, and production)<br />
-                      - Item Code (CPC), Item<br />
-                      - Year Code, Year<br />
-                      - Unit, Value
+                      <p className="font-semibold mb-1">For FAO format, ensure your CSV has these columns:</p>
+                      <ul className="list-disc list-inside ml-2 space-y-1">
+                        <li>Domain Code, Domain</li>
+                        <li>Area Code (M49), Area</li>
+                        <li>Element Code, Element</li>
+                        <li>Item Code (CPC), Item</li>
+                        <li>Year Code, Year</li>
+                        <li>Unit, Value</li>
+                      </ul>
+                      <p className="mt-2">You must include all three element types:</p>
+                      <ul className="list-disc list-inside ml-2 space-y-1">
+                        <li>Area Harvested (Element Code 5312)</li>
+                        <li>Yield (Element Code 5419)</li>
+                        <li>Production (Element Code 5510)</li>
+                      </ul>
                     </div>
                   )}
                 </AlertDescription>
@@ -111,7 +151,7 @@ const CSVUploader = ({ onDataLoad, onUseDefaultData }: CSVUploaderProps) => {
             )}
 
             <div className="text-center mt-2">
-              <div className="mb-3">
+              <div className="flex flex-col md:flex-row justify-center gap-2 mb-3">
                 <Button 
                   variant="outline"
                   size="sm"
@@ -120,6 +160,15 @@ const CSVUploader = ({ onDataLoad, onUseDefaultData }: CSVUploaderProps) => {
                 >
                   <FileQuestion className="mr-1 h-3 w-3" />
                   View Sample CSV Format
+                </Button>
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  className="text-xs border-rice-300 text-rice-700 hover:bg-rice-100"
+                  onClick={generateSampleCSV}
+                >
+                  <Download className="mr-1 h-3 w-3" />
+                  Download FAO Sample CSV
                 </Button>
               </div>
               <p className="text-sm text-rice-600 mb-2">- or -</p>
@@ -139,3 +188,4 @@ const CSVUploader = ({ onDataLoad, onUseDefaultData }: CSVUploaderProps) => {
 };
 
 export default CSVUploader;
+
