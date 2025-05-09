@@ -1,4 +1,3 @@
-
 import { RiceProductionData, PredictionResult, ModelEvaluation } from "../types/RiceData";
 
 export const parseCSV = (csvContent: string): RiceProductionData[] => {
@@ -12,6 +11,20 @@ export const parseCSV = (csvContent: string): RiceProductionData[] => {
     
     // Get headers to identify columns
     const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    
+    console.log("Analyzing CSV headers:", headers);
+    
+    // Check if this is FAO format (has specific columns like domain, element, etc.)
+    const isFAOFormat = headers.includes('domain code') && 
+                       headers.includes('element code') && 
+                       headers.includes('year code') && 
+                       headers.includes('value');
+    
+    if (isFAOFormat) {
+      return parseFAOFormat(lines, headers);
+    }
+    
+    // Standard format parsing continues below
     
     // Find column indices with more flexible matching
     const yearIndex = headers.findIndex(h => 
@@ -74,6 +87,95 @@ export const parseCSV = (csvContent: string): RiceProductionData[] => {
     console.error("Error parsing CSV:", error);
     throw error; // Pass the original error up for better debugging
   }
+};
+
+// Function to handle FAO data format specifically
+const parseFAOFormat = (lines: string[], headers: string[]): RiceProductionData[] => {
+  // Find relevant column indices
+  const yearIndex = headers.indexOf('year');
+  const yearCodeIndex = headers.indexOf('year code');
+  const elementCodeIndex = headers.indexOf('element code');
+  const elementIndex = headers.indexOf('element');
+  const valueIndex = headers.indexOf('value');
+  
+  if (yearIndex === -1 && yearCodeIndex === -1) {
+    throw new Error("Cannot find year information in the CSV");
+  }
+  
+  if (elementCodeIndex === -1 && elementIndex === -1) {
+    throw new Error("Cannot find element information in the CSV");
+  }
+  
+  if (valueIndex === -1) {
+    throw new Error("Cannot find value column in the CSV");
+  }
+  
+  // We'll use these to store data by year
+  const yearData: Map<number, {
+    area?: number,
+    yield?: number,
+    production?: number
+  }> = new Map();
+  
+  // Process each line
+  for (let i = 1; i < lines.length; i++) {
+    const values = lines[i].split(',').map(v => v.trim());
+    
+    // Get year
+    const yearVal = yearIndex !== -1 ? values[yearIndex] : values[yearCodeIndex];
+    const year = parseInt(yearVal);
+    if (isNaN(year)) continue;
+    
+    // Get element (to identify if this is area, yield, or production)
+    const elementVal = elementIndex !== -1 ? 
+      values[elementIndex].toLowerCase() : 
+      values[elementCodeIndex].toLowerCase();
+    
+    // Get the value
+    const value = parseFloat(values[valueIndex]);
+    if (isNaN(value)) continue;
+    
+    // Initialize year data if not exists
+    if (!yearData.has(year)) {
+      yearData.set(year, {});
+    }
+    
+    // Update the appropriate metric based on element type
+    const currentData = yearData.get(year)!;
+    
+    if (elementVal.includes('area harvested') || elementVal.includes('5312')) {
+      currentData.area = value;
+    } 
+    else if (elementVal.includes('yield') || elementVal.includes('5419')) {
+      currentData.yield = value;
+    }
+    else if (elementVal.includes('production') || elementVal.includes('5510')) {
+      currentData.production = value;
+    }
+  }
+  
+  // Convert map to array of RiceProductionData objects
+  const result: RiceProductionData[] = [];
+  
+  for (const [year, data] of yearData.entries()) {
+    // Only add if we have all three metrics
+    if (data.area !== undefined && data.yield !== undefined && data.production !== undefined) {
+      result.push({
+        year,
+        areaHarvested: data.area,
+        yield: data.yield,
+        production: data.production
+      });
+    }
+  }
+  
+  if (result.length === 0) {
+    throw new Error(
+      "Could not extract complete rice production data. Please ensure your CSV contains area harvested, yield, and production values for each year."
+    );
+  }
+  
+  return result.sort((a, b) => a.year - b.year);
 };
 
 // Simple linear regression for time series forecasting

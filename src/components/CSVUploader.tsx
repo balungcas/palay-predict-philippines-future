@@ -69,7 +69,7 @@ const CSVUploader = ({ onDataLoad, onUseDefaultData }: CSVUploaderProps) => {
                   <span className="font-semibold">Click to upload</span> or drag and drop
                 </p>
                 <p className="text-xs text-rice-500">
-                  CSV file with Year, Area harvested, Yield, and Production columns
+                  CSV file with rice production data (standard or FAO format)
                 </p>
               </div>
               <input 
