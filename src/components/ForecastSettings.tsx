@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,13 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { LineChart } from 'lucide-react';
 
 interface ForecastSettingsProps {
-  onGenerateForecast: (years: number, method: 'linear' | 'exponential') => void;
+  onGenerateForecast: (years: number, method: 'linear' | 'exponential' | 'neural') => void;
   isGenerating: boolean;
 }
 
 const ForecastSettings = ({ onGenerateForecast, isGenerating }: ForecastSettingsProps) => {
   const [years, setYears] = useState('3');
-  const [method, setMethod] = useState<'linear' | 'exponential'>('linear');
+  const [method, setMethod] = useState<'linear' | 'exponential' | 'neural'>('neural');
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,17 +49,20 @@ const ForecastSettings = ({ onGenerateForecast, isGenerating }: ForecastSettings
           
           <div className="space-y-2">
             <Label htmlFor="method" className="text-rice-700">Forecasting Method</Label>
-            <Select value={method} onValueChange={(value: 'linear' | 'exponential') => setMethod(value)}>
+            <Select value={method} onValueChange={(value: 'linear' | 'exponential' | 'neural') => setMethod(value)}>
               <SelectTrigger className="border-rice-300 focus:border-rice-500 focus:ring-rice-500">
                 <SelectValue placeholder="Select method" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="neural">Neural Network</SelectItem>
                 <SelectItem value="linear">Linear Regression</SelectItem>
                 <SelectItem value="exponential">Exponential Smoothing</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-rice-600">
-              {method === 'linear' 
+              {method === 'neural' 
+                ? 'Neural network provides the most accurate predictions by learning complex patterns.'
+                : method === 'linear' 
                 ? 'Linear regression works best for stable growth patterns.'
                 : 'Exponential smoothing works better for recent trend changes.'}
             </p>
