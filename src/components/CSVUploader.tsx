@@ -69,7 +69,7 @@ const CSVUploader = ({ onDataLoad, onUseDefaultData }: CSVUploaderProps) => {
                   <span className="font-semibold">Click to upload</span> or drag and drop
                 </p>
                 <p className="text-xs text-rice-500">
-                  CSV file with rice production data (standard or FAO format)
+                  CSV file with rice production data (FAO STAT format supported)
                 </p>
               </div>
               <input 
@@ -93,7 +93,20 @@ const CSVUploader = ({ onDataLoad, onUseDefaultData }: CSVUploaderProps) => {
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription>
+                  {error}
+                  {error.includes('Could not extract complete rice production data') && (
+                    <div className="mt-2 text-sm">
+                      For FAO format, ensure your CSV has columns for:<br />
+                      - Domain Code, Domain<br />
+                      - Area Code (M49), Area<br />
+                      - Element Code, Element (must include area harvested, yield, and production)<br />
+                      - Item Code (CPC), Item<br />
+                      - Year Code, Year<br />
+                      - Unit, Value
+                    </div>
+                  )}
+                </AlertDescription>
               </Alert>
             )}
 

@@ -1,3 +1,4 @@
+
 import { RiceProductionData, PredictionResult, ModelEvaluation } from "../types/RiceData";
 
 export const parseCSV = (csvContent: string): RiceProductionData[] => {
@@ -15,10 +16,9 @@ export const parseCSV = (csvContent: string): RiceProductionData[] => {
     console.log("Analyzing CSV headers:", headers);
     
     // Check if this is FAO format (has specific columns like domain, element, etc.)
-    const isFAOFormat = headers.includes('domain code') && 
-                       headers.includes('element code') && 
-                       headers.includes('year code') && 
-                       headers.includes('value');
+    const isFAOFormat = headers.includes('domain code') || 
+                        headers.includes('element code') || 
+                        headers.includes('item code (cpc)');
     
     if (isFAOFormat) {
       return parseFAOFormat(lines, headers);
@@ -91,24 +91,31 @@ export const parseCSV = (csvContent: string): RiceProductionData[] => {
 
 // Function to handle FAO data format specifically
 const parseFAOFormat = (lines: string[], headers: string[]): RiceProductionData[] => {
+  console.log("Processing FAO format CSV");
+  
   // Find relevant column indices
   const yearIndex = headers.indexOf('year');
   const yearCodeIndex = headers.indexOf('year code');
   const elementCodeIndex = headers.indexOf('element code');
   const elementIndex = headers.indexOf('element');
   const valueIndex = headers.indexOf('value');
+  const itemIndex = headers.indexOf('item');
+  const itemCodeIndex = headers.indexOf('item code (cpc)');
   
   if (yearIndex === -1 && yearCodeIndex === -1) {
-    throw new Error("Cannot find year information in the CSV");
+    throw new Error("Cannot find year information in the CSV. Expected 'Year' or 'Year Code' column.");
   }
   
   if (elementCodeIndex === -1 && elementIndex === -1) {
-    throw new Error("Cannot find element information in the CSV");
+    throw new Error("Cannot find element information in the CSV. Expected 'Element' or 'Element Code' column.");
   }
   
   if (valueIndex === -1) {
-    throw new Error("Cannot find value column in the CSV");
+    throw new Error("Cannot find 'Value' column in the CSV.");
   }
+  
+  // Output found column indices for debugging
+  console.log(`Found columns - Year: ${yearIndex !== -1 ? yearIndex : yearCodeIndex}, Element: ${elementIndex !== -1 ? elementIndex : elementCodeIndex}, Value: ${valueIndex}`);
   
   // We'll use these to store data by year
   const yearData: Map<number, {
@@ -118,8 +125,30 @@ const parseFAOFormat = (lines: string[], headers: string[]): RiceProductionData[
   }> = new Map();
   
   // Process each line
+  let processedLines = 0;
+  let validDataPoints = 0;
+  
   for (let i = 1; i < lines.length; i++) {
     const values = lines[i].split(',').map(v => v.trim());
+    processedLines++;
+    
+    // Skip if we don't have enough values for all expected columns
+    if (values.length < Math.max(yearIndex, yearCodeIndex, elementIndex, elementCodeIndex, valueIndex) + 1) {
+      continue;
+    }
+    
+    // Get item type (to ensure we're only processing rice data)
+    let itemValue = '';
+    if (itemIndex !== -1) {
+      itemValue = values[itemIndex].toLowerCase();
+    } else if (itemCodeIndex !== -1) {
+      itemValue = values[itemCodeIndex].toLowerCase();
+    }
+    
+    // Only process rice-related items (optional check)
+    if (itemValue !== '' && !itemValue.includes('rice') && !itemValue.includes('0422') && !itemValue.includes('23')) {
+      continue;
+    }
     
     // Get year
     const yearVal = yearIndex !== -1 ? values[yearIndex] : values[yearCodeIndex];
@@ -127,7 +156,7 @@ const parseFAOFormat = (lines: string[], headers: string[]): RiceProductionData[
     if (isNaN(year)) continue;
     
     // Get element (to identify if this is area, yield, or production)
-    const elementVal = elementIndex !== -1 ? 
+    const elementVal = (elementIndex !== -1) ? 
       values[elementIndex].toLowerCase() : 
       values[elementCodeIndex].toLowerCase();
     
@@ -143,21 +172,30 @@ const parseFAOFormat = (lines: string[], headers: string[]): RiceProductionData[
     // Update the appropriate metric based on element type
     const currentData = yearData.get(year)!;
     
-    if (elementVal.includes('area harvested') || elementVal.includes('5312')) {
+    if (elementVal.includes('area harvested') || elementVal.includes('area') || elementVal.includes('5312') || elementVal === '5312') {
       currentData.area = value;
+      validDataPoints++;
     } 
-    else if (elementVal.includes('yield') || elementVal.includes('5419')) {
+    else if (elementVal.includes('yield') || elementVal.includes('5419') || elementVal === '5419') {
       currentData.yield = value;
+      validDataPoints++;
     }
-    else if (elementVal.includes('production') || elementVal.includes('5510')) {
+    else if (elementVal.includes('production') || elementVal.includes('5510') || elementVal === '5510') {
       currentData.production = value;
+      validDataPoints++;
     }
   }
+  
+  console.log(`Processed ${processedLines} lines, found ${validDataPoints} valid data points`);
+  console.log(`Found data for ${yearData.size} different years`);
   
   // Convert map to array of RiceProductionData objects
   const result: RiceProductionData[] = [];
   
   for (const [year, data] of yearData.entries()) {
+    // Log what we found for each year
+    console.log(`Year ${year}: Area=${data.area}, Yield=${data.yield}, Production=${data.production}`);
+    
     // Only add if we have all three metrics
     if (data.area !== undefined && data.yield !== undefined && data.production !== undefined) {
       result.push({
@@ -166,6 +204,8 @@ const parseFAOFormat = (lines: string[], headers: string[]): RiceProductionData[
         yield: data.yield,
         production: data.production
       });
+    } else {
+      console.log(`Incomplete data for year ${year}`);
     }
   }
   
