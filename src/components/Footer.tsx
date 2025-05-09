@@ -29,7 +29,7 @@ const Footer = () => {
         <Separator className="my-4 bg-rice-200" />
         
         <div className="text-center text-sm text-rice-600">
-          <p>&copy; {new Date().getFullYear()} Palay Predict Philippines. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Palay Predict Philippines. All rights reserved.| Lance Balungcas</p>
           <p className="mt-1">
             Created with advanced time-series forecasting and data visualization techniques.
           </p>
