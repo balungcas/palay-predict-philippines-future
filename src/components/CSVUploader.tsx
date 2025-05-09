@@ -2,7 +2,7 @@
 import { useState, ChangeEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileUp, UploadCloud, AlertCircle, Check } from 'lucide-react';
+import { FileUp, UploadCloud, AlertCircle, Check, FileQuestion } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { parseCSV } from '@/utils/dataUtils';
 import { RiceProductionData } from '@/types/RiceData';
@@ -47,6 +47,7 @@ const CSVUploader = ({ onDataLoad, onUseDefaultData }: CSVUploaderProps) => {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to parse CSV file');
+      console.error("Error parsing CSV:", err);
     } finally {
       setIsLoading(false);
     }
@@ -96,7 +97,18 @@ const CSVUploader = ({ onDataLoad, onUseDefaultData }: CSVUploaderProps) => {
               </Alert>
             )}
 
-            <div className="text-center">
+            <div className="text-center mt-2">
+              <div className="mb-3">
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  className="text-xs border-rice-300 text-rice-700 hover:bg-rice-100"
+                  onClick={() => window.open("https://github.com/user/repo/blob/main/sample.csv", "_blank")}
+                >
+                  <FileQuestion className="mr-1 h-3 w-3" />
+                  View Sample CSV Format
+                </Button>
+              </div>
               <p className="text-sm text-rice-600 mb-2">- or -</p>
               <Button 
                 variant="outline" 

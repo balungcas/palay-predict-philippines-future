@@ -6,22 +6,38 @@ export const parseCSV = (csvContent: string): RiceProductionData[] => {
     // Split by lines and remove any empty lines
     const lines = csvContent.split('\n').filter(line => line.trim() !== '');
     
+    if (lines.length === 0) {
+      throw new Error("CSV file appears to be empty");
+    }
+    
     // Get headers to identify columns
     const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
     
-    // Find column indices
-    const yearIndex = headers.findIndex(h => h === 'year');
+    // Find column indices with more flexible matching
+    const yearIndex = headers.findIndex(h => 
+      h === 'year' || h.includes('year') || h === 'date' || h === 'time');
+    
     const areaIndex = headers.findIndex(h => 
-      h.includes('area') || h.includes('hectare') || h === 'area harvested');
+      h.includes('area') || h.includes('hectare') || h === 'area harvested' || 
+      h.includes('harvested') || h.includes('harvest'));
+    
     const yieldIndex = headers.findIndex(h => 
-      h === 'yield' || h.includes('yield'));
+      h === 'yield' || h.includes('yield') || h.includes('kg/ha') || h.includes('kg/hectare'));
+    
     const productionIndex = headers.findIndex(h => 
-      h === 'production' || h.includes('production'));
+      h === 'production' || h.includes('production') || h.includes('tonnes') || h.includes('tons'));
     
     // Check if required columns exist
-    if (yearIndex === -1 || areaIndex === -1 || yieldIndex === -1 || productionIndex === -1) {
+    const missingColumns = [];
+    if (yearIndex === -1) missingColumns.push("Year");
+    if (areaIndex === -1) missingColumns.push("Area harvested");
+    if (yieldIndex === -1) missingColumns.push("Yield");
+    if (productionIndex === -1) missingColumns.push("Production");
+    
+    if (missingColumns.length > 0) {
+      console.log("Available columns:", headers);
       throw new Error(
-        "CSV must contain columns for 'Year', 'Area harvested', 'Yield', and 'Production'"
+        `CSV must contain columns for ${missingColumns.join(', ')}. Found columns: ${headers.join(', ')}`
       );
     }
     
@@ -48,11 +64,15 @@ export const parseCSV = (csvContent: string): RiceProductionData[] => {
         }
       }
     }
+
+    if (data.length === 0) {
+      throw new Error("No valid data rows found. Please check your CSV format.");
+    }
     
     return data.sort((a, b) => a.year - b.year);
   } catch (error) {
     console.error("Error parsing CSV:", error);
-    throw new Error("Failed to parse CSV file. Please check the format.");
+    throw error; // Pass the original error up for better debugging
   }
 };
 
