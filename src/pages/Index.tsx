@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -9,14 +8,14 @@ import ForecastSettings from '@/components/ForecastSettings';
 import ForecastResults from '@/components/ForecastResults';
 import Methodology from '@/components/Methodology';
 import { RiceProductionData, PredictionResult, ModelEvaluation } from '@/types/RiceData';
-import { getSampleData, linearForecast, exponentialSmoothingForecast } from '@/utils/dataUtils';
+import { getSampleData, linearForecast, exponentialSmoothingForecast, neuralNetworkForecast } from '@/utils/dataUtils';
 import { useToast } from '@/components/ui/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const Index = () => {
   const [data, setData] = useState<RiceProductionData[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [forecastMethod, setForecastMethod] = useState<'linear' | 'exponential'>('linear');
+  const [forecastMethod, setForecastMethod] = useState<'linear' | 'exponential' | 'neural'>('neural');
   const [predictions, setPredictions] = useState<PredictionResult[]>([]);
   const [evaluation, setEvaluation] = useState<ModelEvaluation>({});
   const { toast } = useToast();
@@ -46,7 +45,7 @@ const Index = () => {
     });
   };
   
-  const handleGenerateForecast = (years: number, method: 'linear' | 'exponential') => {
+  const handleGenerateForecast = async (years: number, method: 'linear' | 'exponential' | 'neural') => {
     if (data.length < 2) {
       toast({
         title: "Not enough data",
@@ -60,31 +59,39 @@ const Index = () => {
     setIsGenerating(true);
     setForecastMethod(method);
     
-    setTimeout(() => {
-      try {
-        const result = method === 'linear' 
+    try {
+      let result;
+      
+      if (method === 'neural') {
+        result = await neuralNetworkForecast(data, years);
+      } else {
+        result = method === 'linear' 
           ? linearForecast(data, years)
           : exponentialSmoothingForecast(data, years);
-        
-        setPredictions(result.predictions);
-        setEvaluation(result.evaluation);
-        
-        toast({
-          title: "Forecast generated",
-          description: `${years}-year forecast using ${method === 'linear' ? 'linear regression' : 'exponential smoothing'}.`,
-          duration: 3000,
-        });
-      } catch (error) {
-        toast({
-          title: "Forecast error",
-          description: error instanceof Error ? error.message : "An error occurred during forecasting",
-          variant: "destructive",
-          duration: 3000,
-        });
-      } finally {
-        setIsGenerating(false);
       }
-    }, 500);
+      
+      setPredictions(result.predictions);
+      setEvaluation(result.evaluation);
+      
+      toast({
+        title: "Forecast generated",
+        description: `${years}-year forecast using ${
+          method === 'linear' ? 'linear regression' : 
+          method === 'neural' ? 'neural network' : 
+          'exponential smoothing'
+        }.`,
+        duration: 3000,
+      });
+    } catch (error) {
+      toast({
+        title: "Forecast error",
+        description: error instanceof Error ? error.message : "An error occurred during forecasting",
+        variant: "destructive",
+        duration: 3000,
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
   
   return (
@@ -96,7 +103,7 @@ const Index = () => {
           <h1 className="text-3xl font-bold text-rice-800 mb-2">Rice Production Forecasting Tool</h1>
           <p className="text-rice-600 max-w-3xl">
             Upload historical rice production data for the Philippines to visualize trends and generate 
-            forecasts for future production levels. Use this tool for agricultural planning and food security analysis.
+            forecasts using advanced machine learning techniques. Use this tool for agricultural planning and food security analysis.
           </p>
         </div>
         

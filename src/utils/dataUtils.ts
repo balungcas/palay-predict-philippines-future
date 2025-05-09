@@ -1,4 +1,4 @@
-
+import * as tf from '@tensorflow/tfjs';
 import { RiceProductionData, PredictionResult, ModelEvaluation } from "../types/RiceData";
 
 export const parseCSV = (csvContent: string): RiceProductionData[] => {
@@ -378,6 +378,130 @@ export const exponentialSmoothingForecast = (
     evaluation: {
       mae,
       rmse
+    }
+  };
+};
+
+export const neuralNetworkForecast = async (
+  data: RiceProductionData[],
+  yearsToPredict: number
+): Promise<{ predictions: PredictionResult[], evaluation: ModelEvaluation }> => {
+  if (data.length < 4) {
+    throw new Error("Neural network forecasting requires at least 4 data points");
+  }
+
+  // Prepare data for neural network
+  const windowSize = 3; // Use 3 years to predict the next year
+  const X = [];
+  const y = [];
+
+  // Create sequences for training
+  for (let i = 0; i < data.length - windowSize; i++) {
+    const window = data.slice(i, i + windowSize).map(d => [
+      d.production / 1e7, // Scale down production
+      d.areaHarvested / 1e6, // Scale down area
+      d.yield / 1e4 // Scale down yield
+    ]);
+    X.push(window);
+    y.push(data[i + windowSize].production / 1e7); // Scale down target production
+  }
+
+  // Convert to tensors
+  const xTensor = tf.tensor3d(X);
+  const yTensor = tf.tensor2d(y, [y.length, 1]);
+
+  // Create and compile the model
+  const model = tf.sequential();
+  model.add(tf.layers.lstm({
+    units: 32,
+    inputShape: [windowSize, 3],
+    returnSequences: false
+  }));
+  model.add(tf.layers.dense({
+    units: 16,
+    activation: 'relu'
+  }));
+  model.add(tf.layers.dense({
+    units: 1,
+    activation: 'linear'
+  }));
+
+  model.compile({
+    optimizer: tf.train.adam(0.001),
+    loss: 'meanSquaredError',
+    metrics: ['meanAbsoluteError']
+  });
+
+  // Train the model
+  await model.fit(xTensor, yTensor, {
+    epochs: 100,
+    batchSize: 8,
+    shuffle: true,
+    validationSplit: 0.2
+  });
+
+  // Generate predictions
+  const predictions: PredictionResult[] = [];
+  let lastWindow = data.slice(-windowSize).map(d => [
+    d.production / 1e7,
+    d.areaHarvested / 1e6,
+    d.yield / 1e4
+  ]);
+
+  // Calculate evaluation metrics on training data
+  const trainPreds = model.predict(xTensor) as tf.Tensor;
+  const trainPredsArray = await trainPreds.mul(1e7).array() as number[];
+  const actualValues = y.map(val => val * 1e7);
+
+  const errors = trainPredsArray.map((pred, i) => pred - actualValues[i]);
+  const absErrors = errors.map(err => Math.abs(err));
+  const squaredErrors = errors.map(err => err * err);
+
+  const mae = absErrors.reduce((a, b) => a + b, 0) / absErrors.length;
+  const rmse = Math.sqrt(squaredErrors.reduce((a, b) => a + b, 0) / squaredErrors.length);
+
+  // Calculate R-squared
+  const meanY = actualValues.reduce((a, b) => a + b, 0) / actualValues.length;
+  const totalSumSquares = actualValues.map(y => Math.pow(y - meanY, 2)).reduce((a, b) => a + b, 0);
+  const residualSumSquares = squaredErrors.reduce((a, b) => a + b, 0);
+  const r2 = 1 - (residualSumSquares / totalSumSquares);
+
+  // Generate future predictions
+  const lastYear = data[data.length - 1].year;
+  for (let i = 1; i <= yearsToPredict; i++) {
+    const input = tf.tensor3d([lastWindow]);
+    const prediction = await model.predict(input) as tf.Tensor;
+    const predValue = (await prediction.data())[0] * 1e7;
+
+    // Calculate confidence intervals (using RMSE-based approach)
+    const stdError = rmse * Math.sqrt(i);
+    const confidenceInterval = 1.96 * stdError;
+
+    predictions.push({
+      year: lastYear + i,
+      predictedProduction: predValue,
+      lowerBound: Math.max(0, predValue - confidenceInterval),
+      upperBound: predValue + confidenceInterval
+    });
+
+    // Update window for next prediction
+    lastWindow.shift();
+    lastWindow.push([
+      predValue / 1e7,
+      data[data.length - 1].areaHarvested / 1e6, // Use last known area
+      data[data.length - 1].yield / 1e4 // Use last known yield
+    ]);
+  }
+
+  // Cleanup tensors
+  tf.dispose([xTensor, yTensor, model]);
+
+  return {
+    predictions,
+    evaluation: {
+      mae,
+      rmse,
+      r2
     }
   };
 };
