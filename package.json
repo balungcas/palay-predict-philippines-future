@@ -41,6 +41,8 @@
     "@radix-ui/react-tooltip": "^1.1.4",
     "@tanstack/react-query": "^5.56.2",
     "@tensorflow/tfjs": "^4.17.0",
+    "browserslist": "^4.24.5",
+    "caniuse-lite": "^1.0.30001717",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
@@ -74,11 +76,10 @@
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.9",
     "globals": "^15.9.0",
-    "lovable-tagger": "^1.1.7",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.11",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.0.1",
-    "vite": "^5.4.1"
+    "vite": "^6.3.5"
   }
 }
