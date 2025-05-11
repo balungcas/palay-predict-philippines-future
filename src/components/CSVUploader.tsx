@@ -1,14 +1,14 @@
-
 import { useState, ChangeEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { FileUp, UploadCloud, AlertCircle, Check, FileQuestion, Download } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { parseCSV } from '@/utils/dataUtils';
-import { RiceProductionData } from '@/types/RiceData';
+import { RiceProductionData, ParsedDataResult } from '@/types/RiceData'; // Import ParsedDataResult
 
 interface CSVUploaderProps {
-  onDataLoad: (data: RiceProductionData[]) => void;
+  // Update onDataLoad to accept ParsedDataResult
+  onDataLoad: (data: ParsedDataResult) => void;
   onUseDefaultData: () => void;
 }
 
@@ -21,27 +21,29 @@ const CSVUploader = ({ onDataLoad, onUseDefaultData }: CSVUploaderProps) => {
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     setError(null);
     setSuccess(false);
-    
+
     const file = e.target.files?.[0];
-    
+
     if (!file) return;
-    
+
     if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
       setError('Please upload a CSV file');
       return;
     }
-    
+
     setFileName(file.name);
     setIsLoading(true);
-    
+
     try {
       const text = await file.text();
-      const data = parseCSV(text);
-      
-      if (data.length === 0) {
+      // Call parseCSV and handle the ParsedDataResult
+      const parsedResult: ParsedDataResult = parseCSV(text) as ParsedDataResult; // Cast to ParsedDataResult
+
+      if (parsedResult.data.length === 0) {
         setError('No valid data found in the CSV file');
       } else {
-        onDataLoad(data);
+        // Pass the entire parsedResult to onDataLoad
+        onDataLoad(parsedResult);
         setSuccess(true);
         setError(null);
       }
@@ -54,32 +56,31 @@ const CSVUploader = ({ onDataLoad, onUseDefaultData }: CSVUploaderProps) => {
   };
 
   const generateSampleCSV = () => {
-    const headers = "Domain Code,Domain,Area Code (M49),Area,Element Code,Element,Item Code (CPC),Item,Year Code,Year,Unit,Value,Flag,Flag Description,Note";
-    
-    // Generate sample data rows - 3 years, with 3 element types each
+    const headers = "Domain Code,Domain,Area Code (M49),Area,Element Code,Element,Item Code (CPC),Item,Year,Code,Year,Unit,Value,Flag,Flag Description";
+
+    // Generate sample data rows for multiple items
     const rows = [
-      // Area harvested data (Element Code 5312)
-      "QC,Crops and livestock products,608,Philippines,5312,Area harvested,0422,Rice (paddy),2020,2020,ha,4718337,,," ,
-      "QC,Crops and livestock products,608,Philippines,5312,Area harvested,0422,Rice (paddy),2021,2021,ha,4802721,,," ,
-      "QC,Crops and livestock products,608,Philippines,5312,Area harvested,0422,Rice (paddy),2022,2022,ha,4827312,,," ,
-      
-      // Yield data (Element Code 5419)
-      "QC,Crops and livestock products,608,Philippines,5419,Yield,0422,Rice (paddy),2020,2020,hg/ha,40840,,," ,
-      "QC,Crops and livestock products,608,Philippines,5419,Yield,0422,Rice (paddy),2021,2021,hg/ha,41340,,," ,
-      "QC,Crops and livestock products,608,Philippines,5419,Yield,0422,Rice (paddy),2022,2022,hg/ha,41980,,," ,
-      
-      // Production data (Element Code 5510)
-      "QC,Crops and livestock products,608,Philippines,5510,Production,0422,Rice (paddy),2020,2020,tonnes,19294719,,," ,
-      "QC,Crops and livestock products,608,Philippines,5510,Production,0422,Rice (paddy),2021,2021,tonnes,19962991,,," ,
-      "QC,Crops and livestock products,608,Philippines,5510,Production,0422,Rice (paddy),2022,2022,tonnes,20265421,,,"
+      // Rice (paddy) - Gross Production data (Element Code 152)
+      "QV,Value of Agricultural Production,608,Philippines,152,Gross Production,0422,Rice (paddy),2020,2020,1000 Int$,19294719,E,Estimated value",
+      "QV,Value of Agricultural Production,608,Philippines,152,Gross Production,0422,Rice (paddy),2021,2021,1000 Int$,19962991,E,Estimated value",
+      "QV,Value of Agricultural Production,608,Philippines,152,Gross Production,0422,Rice (paddy),2022,2022,1000 Int$,20265421,E,Estimated value",
+      // Maize - Gross Production data (Element Code 152)
+      "QV,Value of Agricultural Production,608,Philippines,152,Gross Production,0137,Maize,2020,2020,1000 Int$,8154000,E,Estimated value",
+      "QV,Value of Agricultural Production,608,Philippines,152,Gross Production,0137,Maize,2021,2021,1000 Int$,8300000,E,Estimated value",
+      "QV,Value of Agricultural Production,608,Philippines,152,Gross Production,0137,Maize,2022,2022,1000 Int$,8450000,E,Estimated value",
+      // Wheat - Gross Production data (Element Code 152)
+      "QV,Value of Agricultural Production,608,Philippines,152,Gross Production,0111,Wheat,2020,2020,1000 Int$,500000,E,Estimated value",
+      "QV,Value of Agricultural Production,608,Philippines,152,Gross Production,0111,Wheat,2021,2021,1000 Int$,520000,E,Estimated value",
+      "QV,Value of Agricultural Production,608,Philippines,152,Gross Production,0111,Wheat,2022,2022,1000 Int$,540000,E,Estimated value"
     ];
-    
+
+
     const csvContent = [headers, ...rows].join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'fao_format_sample.csv');
+    link.setAttribute('download', 'fao_format_sample_multi_item.csv'); // Updated sample file name
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -88,11 +89,11 @@ const CSVUploader = ({ onDataLoad, onUseDefaultData }: CSVUploaderProps) => {
   return (
     <div className="mb-8">
       <h2 className="text-2xl font-semibold mb-4 text-rice-800">Upload Your Data</h2>
-      
+
       <Card className="bg-white border-rice-200">
         <CardContent className="pt-6">
           <div className="flex flex-col gap-4">
-            <label 
+            <label
               className="flex flex-col items-center justify-center w-full h-32 border-2 border-rice-300 border-dashed rounded-md cursor-pointer bg-rice-50 hover:bg-rice-100 transition-colors"
             >
               <div className="flex flex-col items-center justify-center pt-5 pb-6">
@@ -101,14 +102,14 @@ const CSVUploader = ({ onDataLoad, onUseDefaultData }: CSVUploaderProps) => {
                   <span className="font-semibold">Click to upload</span> or drag and drop
                 </p>
                 <p className="text-xs text-rice-500">
-                  CSV file with rice production data (FAO STAT format supported)
+                  CSV file with agricultural production data (FAO STAT format supported) {/* Updated text */}
                 </p>
               </div>
-              <input 
-                type="file" 
-                className="hidden" 
-                accept=".csv" 
-                onChange={handleFileChange} 
+              <input
+                type="file"
+                className="hidden"
+                accept=".csv"
+                onChange={handleFileChange}
                 disabled={isLoading}
               />
             </label>
@@ -128,31 +129,35 @@ const CSVUploader = ({ onDataLoad, onUseDefaultData }: CSVUploaderProps) => {
                 <AlertDescription>
                   {error}
                   {error.includes('Could not extract complete rice production data') && (
-                    <div className="mt-2 text-sm">
-                      <p className="font-semibold mb-1">For FAO format, ensure your CSV has these columns:</p>
-                      <ul className="list-disc list-inside ml-2 space-y-1">
-                        <li>Domain Code, Domain</li>
-                        <li>Area Code (M49), Area</li>
-                        <li>Element Code, Element</li>
-                        <li>Item Code (CPC), Item</li>
-                        <li>Year Code, Year</li>
-                        <li>Unit, Value</li>
-                      </ul>
-                      <p className="mt-2">You must include all three element types:</p>
-                      <ul className="list-disc list-inside ml-2 space-y-1">
-                        <li>Area Harvested (Element Code 5312)</li>
-                        <li>Yield (Element Code 5419)</li>
-                        <li>Production (Element Code 5510)</li>
-                      </ul>
-                    </div>
-                  )}
+  <div className="mt-2 text-sm">
+    <p className="font-semibold mb-1">For FAO format, ensure your CSV has these columns for Gross Production data:</p>
+    <ul className="list-disc list-inside ml-2 space-y-1">
+    <li>Domain Code</li>
+      <li>Domain</li>
+      <li>Area Code (M49)</li>
+      <li>Area</li>
+      <li>Element Code</li>
+      <li>Element</li>
+      <li>Item Code (CPC)</li>
+      <li>Item</li> {/* Highlight Item column */}
+      <li>Year Code</li>
+      <li>Year</li>
+      <li>Unit</li>
+      <li>Value</li>
+      <li>Flag</li>
+      <li>Flag Description</li>
+    </ul>
+    <p className="font-semibold mt-2">Ensure the 'Item' column is present to handle different products.</p> {/* Added extra hint */}
+  </div>
+)}
+
                 </AlertDescription>
               </Alert>
             )}
 
             <div className="text-center mt-2">
               <div className="flex flex-col md:flex-row justify-center gap-2 mb-3">
-                <Button 
+                <Button
                   variant="outline"
                   size="sm"
                   className="text-xs border-rice-300 text-rice-700 hover:bg-rice-100"
@@ -161,19 +166,19 @@ const CSVUploader = ({ onDataLoad, onUseDefaultData }: CSVUploaderProps) => {
                   <FileQuestion className="mr-1 h-3 w-3" />
                   View Sample CSV Format
                 </Button>
-                <Button 
+                <Button
                   variant="outline"
                   size="sm"
                   className="text-xs border-rice-300 text-rice-700 hover:bg-rice-100"
                   onClick={generateSampleCSV}
                 >
                   <Download className="mr-1 h-3 w-3" />
-                  Download FAO Sample CSV
+                  Download Multi-Item FAO Sample CSV {/* Updated button text */}
                 </Button>
               </div>
               <p className="text-sm text-rice-600 mb-2">- or -</p>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={onUseDefaultData}
                 className="border-rice-300 text-rice-700 hover:bg-rice-100"
               >
@@ -188,4 +193,3 @@ const CSVUploader = ({ onDataLoad, onUseDefaultData }: CSVUploaderProps) => {
 };
 
 export default CSVUploader;
-

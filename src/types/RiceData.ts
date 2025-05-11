@@ -1,9 +1,7 @@
-
 export interface RiceProductionData {
   year: number;
-  areaHarvested: number; // in hectares
-  yield: number; // in kg per hectare
-  production: number; // in tonnes
+  grossProduction: number;
+  item?: string; // Added optional item field
 }
 
 export interface PredictionResult {
@@ -17,4 +15,10 @@ export interface ModelEvaluation {
   mae?: number;  // Mean Absolute Error
   rmse?: number; // Root Mean Squared Error
   r2?: number;   // R-squared
+}
+
+// New interface to return parsed data and unique items
+export interface ParsedDataResult {
+  data: RiceProductionData[];
+  items: string[];
 }

@@ -7,14 +7,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { LineChart } from 'lucide-react';
 
 interface ForecastSettingsProps {
-  onGenerateForecast: (years: number, method: 'linear' | 'exponential' | 'neural') => void;
+  onGenerateForecast: (years: number, method: 'linear' | 'exponential') => void;
   isGenerating: boolean;
+  items: string[]; // Added items prop
+  selectedItem: string | null; // Added selectedItem prop
+  onItemChange: (item: string) => void; // Added onItemChange prop
 }
 
-const ForecastSettings = ({ onGenerateForecast, isGenerating }: ForecastSettingsProps) => {
+const ForecastSettings = ({
+  onGenerateForecast,
+  isGenerating,
+  items, // Destructure new props
+  selectedItem,
+  onItemChange
+}: ForecastSettingsProps) => {
   const [years, setYears] = useState('3');
-  const [method, setMethod] = useState<'linear' | 'exponential' | 'neural'>('neural');
-  
+  const [method, setMethod] = useState<'linear' | 'exponential'>('linear');
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const yearsNum = parseInt(years);
@@ -33,6 +42,25 @@ const ForecastSettings = ({ onGenerateForecast, isGenerating }: ForecastSettings
       </CardHeader>
       <CardContent className="p-6">
         <form onSubmit={handleSubmit} className="space-y-4">
+
+           {/* New: Item Selection Dropdown (only if multiple items exist) */}
+          {items.length > 1 && (
+             <div className="space-y-2">
+              <Label htmlFor="item" className="text-rice-700">Agricultural Product</Label>
+               <Select value={selectedItem || ''} onValueChange={onItemChange}> {/* Use selectedItem */}
+                <SelectTrigger className="border-rice-300 focus:border-rice-500 focus:ring-rice-500">
+                   <SelectValue placeholder="Select a product" />
+                 </SelectTrigger>
+                <SelectContent>
+                  {items.map(item => (
+                    <SelectItem key={item} value={item}>{item}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+
           <div className="space-y-2">
             <Label htmlFor="years" className="text-rice-700">Years to Forecast</Label>
             <Input
@@ -46,30 +74,27 @@ const ForecastSettings = ({ onGenerateForecast, isGenerating }: ForecastSettings
             />
             <p className="text-xs text-rice-600">Enter a value between 1 and 10 years</p>
           </div>
-          
+
           <div className="space-y-2">
             <Label htmlFor="method" className="text-rice-700">Forecasting Method</Label>
-            <Select value={method} onValueChange={(value: 'linear' | 'exponential' | 'neural') => setMethod(value)}>
+            <Select value={method} onValueChange={(value: 'linear' | 'exponential') => setMethod(value)}>
               <SelectTrigger className="border-rice-300 focus:border-rice-500 focus:ring-rice-500">
                 <SelectValue placeholder="Select method" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="neural">Neural Network</SelectItem>
                 <SelectItem value="linear">Linear Regression</SelectItem>
                 <SelectItem value="exponential">Exponential Smoothing</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-rice-600">
-              {method === 'neural' 
-                ? 'Neural network provides the most accurate predictions by learning complex patterns.'
-                : method === 'linear' 
+              {method === 'linear'
                 ? 'Linear regression works best for stable growth patterns.'
                 : 'Exponential smoothing works better for recent trend changes.'}
             </p>
           </div>
-          
-          <Button 
-            type="submit" 
+
+          <Button
+            type="submit"
             className="w-full bg-rice-600 hover:bg-rice-700"
             disabled={isGenerating}
           >
